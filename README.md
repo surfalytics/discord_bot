@@ -5,7 +5,7 @@ I'll help you create a Discord bot using Python that can be integrated with Zapi
 
 First, create a Discord bot and get its token:
 
-Copy1. Go to Discord Developer Portal (https://discord.com/developers/applications)
+1. Go to Discord Developer Portal (https://discord.com/developers/applications)
 2. Click "New Application"
 3. Give it a name and click "Create"
 4. Go to the "Bot" section and click "Add Bot"
@@ -13,7 +13,7 @@ Copy1. Go to Discord Developer Portal (https://discord.com/developers/applicatio
 
 Here's a basic Discord bot code using discord.py:
 
-```
+```python
 pythonCopyimport discord
 from discord.ext import commands
 from flask import Flask, request, jsonify
@@ -74,7 +74,9 @@ if __name__ == '__main__':
 
 Install required packages:
 
-bashCopypip install discord.py flask
+```bash
+pip install discord.py flask
+```
 
 Deploy the bot:
 You can deploy this bot on platforms like:
@@ -88,7 +90,7 @@ Python Anywhere
 
 To use with Zapier:
 
-Copy1. Create a new Zap in Zapier
+1. Create a new Zap in Zapier
 2. Choose your trigger (any app/event that you want to respond to)
 3. For the action, choose "Webhooks by Zapier"
 4. Select "POST" as the method
@@ -237,10 +239,11 @@ To use this enhanced version:
 
 Set environment variables:
 
-bashCopyexport DISCORD_TOKEN='your-token'
+```bash
+export DISCORD_TOKEN='your-token'
 export CHANNEL_ID='your-channel-id'
 export API_KEY='your-api-key'
-
+```
 In Zapier, when setting up the webhook:
 
 
@@ -249,7 +252,7 @@ You can send simple messages or complex embeds:
 
 Simple message:
 
-```
+```python
 jsonCopy{
     "message": "Your message here"
 }
@@ -274,6 +277,7 @@ jsonCopy{
     }
 }
 ```
+
 This enhanced version includes:
 
 Error handling
