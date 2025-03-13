@@ -1,4 +1,5 @@
 import os
+import json
 import discord
 import logging
 import asyncio
@@ -30,25 +31,40 @@ webhook_secret = os.getenv("WEBHOOK_SECRET")
 def verify_webhook_signature(req):
     signature = req.headers.get("X-Signature")
     if not signature:
-        return False
+       	return False
 
-    calculated_signature = hmac.new(webhook_secret.encode(), req.data, hashlib.sha256).hexdigest()
+    raw_data = req.data
+
+    bom = b'\xef\xbb\xbf'
+    raw_data = raw_data.replace(bom, b'')
+
+    calculated_signature = hmac.new(webhook_secret.encode(), raw_data, hashlib.sha256).hexdigest()
     return hmac.compare_digest(calculated_signature, signature)
 
 @app.route('/webhook/send_message', methods=['POST'])
 def send_message():
+
     raw_data = request.data
     logger.info("received raw data repr: " + repr(raw_data))
 
-    if not verify_webhook_signature(request):
-        return jsonify({"error": "unauthorized"}), 401
-    if not bot.is_ready():
-        return jsonify({"error": "bot not ready"}), 503
+    bom = b'\xef\xbb\xbf'
+    clean_data = raw_data.replace(bom, b'')
 
-    data = request.json
+    try:
+       	data = json.loads(clean_data)
+    except Exception as e:
+       	logger.error("Failed to parse JSON: " + str(e))
+       	return jsonify({"error": "Bad JSON: " + str(e)}), 400
+
+    if not verify_webhook_signature(request):
+       	return jsonify({"error": "unauthorized"}), 401
+    if not bot.is_ready():
+       	return jsonify({"error": "bot not ready"}), 503
+
     message = data.get("message")
     if not message:
-        return jsonify({"error": "message is required"}), 400
+       	return jsonify({"error": "message is required"}), 400
+
 
     try:
         channel_id = int(data.get("channel_id"))
@@ -56,12 +72,13 @@ def send_message():
         return jsonify({"error": "invalid channel_id"}), 400
 
     thread_message = data.get("thread_message")
+    thread_name = data.get("thread_name")
 
     async def _send():
         channel = bot.get_channel(channel_id)
         if channel:
             sent_message = await channel.send(message)
-            thread = await sent_message.create_thread(name="discussion", auto_archive_duration=1440)
+            thread = await sent_message.create_thread(name=thread_name, auto_archive_duration=1440)
             if thread_message:
                 await thread.send(thread_message)
             logger.info(f"message and thread sent to channel {channel_id}")
@@ -171,6 +188,20 @@ async def on_ready():
 async def on_member_join(member):
     logger.info(f"{member.name} joined the server.")
     members.append({"discord_id": member.id, "username": member.name})
+    
+    zapier_webhook_url = os.getenv("ZAPIER_WEBHOOK_URL")
+    
+    if zapier_webhook_url:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(zapier_webhook_url, json={"discord_id": member.id, "username": member.name}) as response:
+                    if response.status != 200:
+                        logger.error(f"Error calling join webhook: HTTP {response.status}")
+        except Exception as e:
+            logger.error(f"Error calling join webhook: {str(e)}")
+    else:
+        logger.error("ZAPIER_WEBHOOK_URL not set in environment.")
+
 
 @bot.event
 async def on_member_remove(member):
@@ -185,7 +216,7 @@ def run_discord_bot():
     except Exception as e:
         logger.error(f"Error running discord bot: {e}")
     finally:
-        loop.run_until_complete(bot.close())
+	loop.run_until_complete(bot.close())
         loop.close()
 
 
