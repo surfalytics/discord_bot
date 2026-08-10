@@ -229,11 +229,19 @@ def create_invite():
     if not bot.is_ready():
         return jsonify({"error": "bot not ready"}), 503
 
+    # Invite lifetime from the caller (seconds), clamped to [1h, 7d]. Default 24h.
+    data = request.get_json(silent=True) or {}
+    try:
+        requested = int(data.get("max_age", 86400))
+    except (TypeError, ValueError):
+        requested = 86400
+    max_age = max(3600, min(requested, 604800))
+
     async def _create():
         guild = bot.get_guild(guild_id)
         if guild and guild.text_channels:
             invite = await guild.text_channels[0].create_invite(
-                max_age=86400,
+                max_age=max_age,
                 max_uses=1,
                 unique=True
             )
